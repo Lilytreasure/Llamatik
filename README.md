@@ -46,6 +46,12 @@ All backed by a shared Kotlin API so you can switch between local and remote sea
 
 ---
 
+## 🔧 Requirements
+
+- iOS Deployment Target 16.6 
+
+---
+
 ## 📦 Library Installation
 
 Llamatik is published on **Maven Central**.
@@ -65,7 +71,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 commonMain.dependencies {
-    implementation("com.llamatik:library:0.7.0")
+    implementation("com.llamatik:library:0.7.1")
 }
 ```
 
