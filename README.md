@@ -167,14 +167,6 @@ Please go to the [Backend README.md](./backend/README.md) for more information.
 
 ---
 
-## 📝 FAQ
-
-**Why use GitHub Packages instead of MavenCentral?**  
-Although it needs authentication it was easier to set up than MavenCentral.  
-But we plan to upload it to MavenCentral when we release the first complete version, or as soon as MC requirements are met.
-
----
-
 ## 🤝 Contributing
 
 Llamatik is 100% open-source and actively developed.  
