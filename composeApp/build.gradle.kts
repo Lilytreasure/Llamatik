@@ -79,7 +79,6 @@ kotlin {
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
-            implementation(libs.skiko)
             implementation(compose.ui)
             implementation(compose.foundation)
             implementation(compose.material)
@@ -88,9 +87,8 @@ kotlin {
             implementation(compose.materialIconsExtended)
             @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
-            implementation(libs.skiko.macos.arm64)
 
-            implementation(libs.androidx.compose.ui.util)
+            implementation(libs.jetbrains.compose.ui.util)
 
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
@@ -184,7 +182,6 @@ android {
         implementation(libs.koin.android)
 
         implementation(platform(libs.firebase.bom))
-        implementation(libs.firebase.analytics.ktx)
         implementation(libs.firebase.crashlytics)
         implementation(libs.firebase.analytics)
 
@@ -215,7 +212,6 @@ compose.desktop {
 
     dependencies {
         implementation(compose.desktop.currentOs)
-        implementation(libs.skiko)
         implementation(compose.ui)
         implementation(compose.foundation)
         implementation(compose.material)
@@ -224,7 +220,6 @@ compose.desktop {
         implementation(compose.materialIconsExtended)
         @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
         implementation(compose.components.resources)
-        implementation(libs.skiko.macos.arm64)
         implementation(project(":shared"))
 
         implementation(libs.androidx.compose.ui.util)
