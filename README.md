@@ -26,8 +26,10 @@
 - ✅ Works with GGUF models (e.g. Mistral, Phi, LLaMA)  
 - ✅ Lightweight and dependency-free runtime  
 <br>
+
 ### Try it NOW
-If you want to try how LLamatik works you can download the App on the App Store or Google Play Store.<br>
+
+If you want to try how LLamatik works, you can download the App on the App Store or Google Play Store.<br>
 <a href="https://play.google.com/store/apps/details?id=com.llamatik.app.android"><img src="assets/google-play-button.png" align="left" width="200px" height="68px"/></a> <a href="https://apple.co/3Md7EIh"><img src="assets/app-store-button.png" align="left" width="200px" height="76px"/></a>
 <br><br><br>
 
