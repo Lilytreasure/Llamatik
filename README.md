@@ -25,6 +25,7 @@
 - ✅ Context-aware generation (system + conversation history)  
 - ✅ Works with GGUF models (e.g. Mistral, Phi, LLaMA)  
 - ✅ Lightweight and dependency-free runtime  
+- ✅ Schema-Constrained JSON Generation
 
 ##### Try it NOW
 
@@ -80,7 +81,7 @@ dependencyResolutionManagement {
 
 ```kotlin
 commonMain.dependencies {
-    implementation("com.llamatik:library:0.11.0")
+    implementation("com.llamatik:library:0.12.0")
 }
 ```
 

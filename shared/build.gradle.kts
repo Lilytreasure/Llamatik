@@ -39,6 +39,8 @@ kotlin {
 
             // Give it a bundle id to keep Xcode happy
             freeCompilerArgs += "-Xbinary=bundleId=com.llamatik.shared"
+            freeCompilerArgs += "-Xbinary=ios_version_min=16.6"
+            freeCompilerArgs += "-Xoverride-konan-properties=osVersionMin.ios=16.6"
 
             // NOTE:
             // We deliberately do NOT add custom linkerOpts here.

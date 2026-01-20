@@ -35,6 +35,7 @@ kotlin {
             isStatic = true
             linkerOpts("-Wl,-no_implicit_dylibs")
             freeCompilerArgs += listOf("-Xbinary=bundleId=com.llamatik.library")
+            freeCompilerArgs += "-Xoverride-konan-properties=osVersionMin.ios=16.6"
         }
     }
 
@@ -132,31 +133,39 @@ kotlin {
                 "$libPath/libllama_static.a",
                 "$libPath/llama-local-build/src/libllama.a",
                 "$libPath/llama-local-build/ggml/src/libggml.a",
+                "$libPath/llama-local-build/ggml/src/libggml-base.a",
+                "$libPath/llama-local-build/ggml/src/libggml-cpu.a",
                 "$libPath/llama-local-build/ggml/src/ggml-blas/libggml-blas.a",
                 "$libPath/llama-local-build/ggml/src/ggml-metal/libggml-metal.a"
             )
         }
 
+        // Ensure cinterop runs after the native libs are built/merged
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.CInteropProcess>().configureEach {
             dependsOn(mergeTask)
         }
 
         arch.compilations.getByName("main").cinterops {
             create("llama") {
-                val defFileName = if (sdkName.contains("Simulator"))
-                    "llama_ios_simulator.def"
-                else
-                    "llama_ios_${archName}.def"
+                val defFileName = "llama_ios.def"
+
                 defFile("src/iosMain/c_interop/$defFileName")
                 packageName("com.llamatik.library.platform.llama")
+
                 compilerOpts("-I${projectDir}/src/iosMain/c_interop/include")
+
+                extraOpts(
+                    "-libraryPath", libPath
+                )
+
                 tasks.named(interopProcessingTaskName).configure {
-                    dependsOn(compileTask)
+                    dependsOn(mergeTask)
                 }
             }
         }
 
         val merged = "$libPath/libllama_merged.a"
+
         arch.binaries.getFramework("DEBUG").apply {
             baseName = "llamatik"
             isStatic = true
