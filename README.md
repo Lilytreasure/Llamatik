@@ -258,15 +258,6 @@ Open a PR and add it to the list 🚀
 
 ---
 
-## 📦 Apps using Llamatik
-
-Llamatik is already used in production apps on Google Play and App Store.
-
-Want to showcase your app here?
-Open a PR and add it to the list 🚀
-
----
-
 ## 🤝 Contributing
 
 Llamatik is 100% open-source and actively developed.
