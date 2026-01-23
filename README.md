@@ -13,13 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://central.sonatype.com/artifact/com.llamatik/library">
-    <img src="https://img.shields.io/maven-central/v/com.llamatik/library.svg" />
-  </a>
-  <img src="https://img.shields.io/badge/Kotlin-Multiplatform-blueviolet" />
-  <img src="https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20Desktop-green" />
-  <img src="https://img.shields.io/badge/LLM-llama.cpp-orange" />
-  <img src="https://img.shields.io/badge/License-MIT-lightgrey" />
+  <a href="https://central.sonatype.com/artifact/com.llamatik/library"><img src="https://img.shields.io/maven-central/v/com.llamatik/library.svg" alt="maven central badge"/></a>
+  <img src="https://img.shields.io/badge/Kotlin-Multiplatform-blueviolet" alt="kmp badge"/>
+  <img src="https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20Desktop-green" alt="platforms badge"/>
+  <img src="https://img.shields.io/badge/LLM-llama.cpp-orange" alt="llama.cpp badge"/>
+  <img src="https://img.shields.io/badge/License-MIT-lightgrey" alt="license badge"/>
 </p>
 
 ---
@@ -74,12 +72,8 @@ The **Llamatik App** showcases:
 - Streaming generation
 - Privacy-first AI (no cloud required)
 
-<a href="https://play.google.com/store/apps/details?id=com.llamatik.app.android">
-  <img src="assets/google-play-button.png" width="200px"/>
-</a>
-<a href="https://apple.co/3Md7EIh">
-  <img src="assets/app-store-button.png" width="200px"/>
-</a>
+<a href="https://play.google.com/store/apps/details?id=com.llamatik.app.android"><img src="assets/google-play-button.png" width="200px"/></a>
+<a href="https://apple.co/3Md7EIh"><img src="assets/app-store-button.png" width="200px"/></a>
 
 ---
 
