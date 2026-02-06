@@ -121,6 +121,10 @@ kotlin {
             implementation(libs.xmlutil.serialization.android)
             implementation(libs.bouquet)
             implementation(libs.okhttp)
+
+            implementation(libs.android.play.review)
+            implementation(libs.android.play.review.ktx)
+            implementation(libs.kotlinx.coroutines.play.services)
         }
 
         iosMain.dependencies {
