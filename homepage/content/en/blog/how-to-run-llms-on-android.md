@@ -150,9 +150,9 @@ Llamatik is ideal when you need:
 It's not a replacement for large cloud models-it's edge AI done right.
 
 ## Try it yourself
-GitHub: [https://github.com/ferranpons/llamatik](https://github.com/ferranpons/llamatik)
-Website & demo app: [https://llamatik.com](https://llamatik.com)
-llama.cpp: [https://github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)
+- GitHub: [https://github.com/ferranpons/llamatik](https://github.com/ferranpons/llamatik)
+- Website & demo app: [https://llamatik.com](https://llamatik.com)
+- llama.cpp: [https://github.com/ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)
 
 ## Final thoughts
 Running LLMs offline on Android using Kotlin is no longer experimental.
