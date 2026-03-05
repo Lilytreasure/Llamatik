@@ -86,6 +86,8 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.ParametersHolder
 
+private const val CHAT_BUBBLE_MAX_WIDTH_DP = 800
+
 class ChatBotTabScreen : Screen {
 
     @Composable
@@ -111,7 +113,9 @@ class ChatBotTabScreen : Screen {
         val downloadingMap = downloadStates.mapValues { it.value.inProgress }
         val progressMap = downloadStates.mapValues { it.value.progress.coerceIn(0, 100) / 100f }
 
+        // Dialog state (stable UI state rendered from Content)
         val isDialogOpen = remember { mutableStateOf(false) }
+        val dialogMessage = remember { mutableStateOf("") }
 
         LaunchedEffect(Unit) {
             viewModel.onStarted(navigator)
@@ -129,6 +133,8 @@ class ChatBotTabScreen : Screen {
             loadingGenerateModelName = loadingGenerateModelName,
             loadingSttModelName = loadingSttModelName,
             loadingStableDiffusionModelName = loadingStableDiffusionModelName,
+            isDialogOpen = isDialogOpen,
+            dialogMessage = dialogMessage,
         )
 
         LlamatikTheme {
@@ -193,6 +199,7 @@ class ChatBotTabScreen : Screen {
                     onDismiss = { showSettingsSheet.value = false }
                 )
             }
+
             if (showModelSelectorSheet.value) {
                 ModelSelectorBottomSheet(
                     downloadingMap = downloadingMap,
@@ -241,13 +248,17 @@ class ChatBotTabScreen : Screen {
                     onCancelDownloadClicked = { model ->
                         viewModel.onCancelDownload(model)
                     },
+                    onClearAllCachedModelsClicked = {
+                        viewModel.onClearAllCachedModels()
+                    },
                 ) {
                     showModelSelectorSheet.value = false
                 }
             }
+
             if (isDialogOpen.value) {
                 LlamatikDialog(
-                    message = getCurrentLocalization().featureNotAvailableMessage,
+                    message = dialogMessage.value,
                     onDismissRequest = { isDialogOpen.value = false },
                     onConfirmation = { isDialogOpen.value = false },
                     imageDescription = "",
@@ -267,65 +278,82 @@ class ChatBotTabScreen : Screen {
         loadingGenerateModelName: MutableState<String?>,
         loadingSttModelName: MutableState<String?>,
         loadingStableDiffusionModelName: MutableState<String?>,
+        isDialogOpen: MutableState<Boolean>,
+        dialogMessage: MutableState<String>,
     ) {
-        val sideEffects = viewModel.sideEffects.collectAsState(ChatBotSideEffects.Initial)
-        sideEffects.value.apply {
-            when (this) {
-                ChatBotSideEffects.Initial -> {}
-                ChatBotSideEffects.OnLoadError -> {}
-                is ChatBotSideEffects.OnLoaded -> {}
-                ChatBotSideEffects.OnMessageLoaded -> {
-                    isLoading.value = false
-                }
+        LaunchedEffect(viewModel) {
+            viewModel.sideEffects.collect { effect ->
+                when (effect) {
+                    ChatBotSideEffects.Initial -> {}
+                    ChatBotSideEffects.OnLoadError -> {}
+                    is ChatBotSideEffects.OnLoaded -> {}
 
-                ChatBotSideEffects.OnMessageLoading -> {
-                    isLoading.value = true
-                }
+                    ChatBotSideEffects.OnMessageLoaded -> {
+                        isLoading.value = false
+                    }
 
-                ChatBotSideEffects.OnNoResults -> {
-                    isLoading.value = false
-                }
+                    ChatBotSideEffects.OnMessageLoading -> {
+                        isLoading.value = true
+                    }
 
-                ChatBotSideEffects.ScrollToBottom -> {}
+                    ChatBotSideEffects.OnNoResults -> {
+                        isLoading.value = false
+                    }
 
-                ChatBotSideEffects.OnEmbedModelLoaded -> {
-                    loadingEmbedModelName.value = null
-                    showModelSelectorSheet.value = false
-                }
+                    ChatBotSideEffects.ScrollToBottom -> {}
 
-                ChatBotSideEffects.OnGenerateModelLoaded -> {
-                    loadingGenerateModelName.value = null
-                    showModelSelectorSheet.value = false
-                }
+                    ChatBotSideEffects.OnEmbedModelLoaded -> {
+                        loadingEmbedModelName.value = null
+                        showModelSelectorSheet.value = false
+                    }
 
-                ChatBotSideEffects.OnSttModelLoaded -> {
-                    loadingSttModelName.value = null
-                    showModelSelectorSheet.value = false
-                }
+                    ChatBotSideEffects.OnGenerateModelLoaded -> {
+                        loadingGenerateModelName.value = null
+                        showModelSelectorSheet.value = false
+                    }
 
-                ChatBotSideEffects.OnStableDiffusionModelLoaded -> {
-                    loadingStableDiffusionModelName.value = null
-                    showModelSelectorSheet.value = false
-                }
+                    ChatBotSideEffects.OnSttModelLoaded -> {
+                        loadingSttModelName.value = null
+                        showModelSelectorSheet.value = false
+                    }
 
-                ChatBotSideEffects.OnSettingsChanged -> {
-                    showSettingsSheet.value = false
-                }
+                    ChatBotSideEffects.OnStableDiffusionModelLoaded -> {
+                        loadingStableDiffusionModelName.value = null
+                        showModelSelectorSheet.value = false
+                    }
 
-                ChatBotSideEffects.OnEmbedModelLoadError -> {
-                    loadingEmbedModelName.value = null
-                }
+                    ChatBotSideEffects.OnSettingsChanged -> {
+                        showSettingsSheet.value = false
+                    }
 
-                ChatBotSideEffects.OnGenerateModelLoadError -> {
-                    loadingGenerateModelName.value = null
-                }
+                    ChatBotSideEffects.OnEmbedModelLoadError -> {
+                        loadingEmbedModelName.value = null
+                    }
 
-                ChatBotSideEffects.OnSttModelLoadError -> {
-                    loadingSttModelName.value = null
-                }
+                    ChatBotSideEffects.OnGenerateModelLoadError -> {
+                        loadingGenerateModelName.value = null
+                    }
 
-                ChatBotSideEffects.OnStableDiffusionModelLoadError -> {
-                    loadingStableDiffusionModelName.value = null
+                    ChatBotSideEffects.OnSttModelLoadError -> {
+                        loadingSttModelName.value = null
+                    }
+
+                    ChatBotSideEffects.OnStableDiffusionModelLoadError -> {
+                        loadingStableDiffusionModelName.value = null
+                    }
+
+                    is ChatBotSideEffects.OnCacheCleared -> {
+                        showModelSelectorSheet.value = false
+                        isLoading.value = false
+                        viewModel.stopGeneration()
+                        dialogMessage.value = effect.message
+                        isDialogOpen.value = true
+                    }
+
+                    is ChatBotSideEffects.OnCacheClearFailed -> {
+                        dialogMessage.value = effect.message
+                        isDialogOpen.value = true
+                    }
                 }
             }
         }
@@ -491,7 +519,8 @@ class ChatBotTabScreen : Screen {
         }
 
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (chatUiModel.messages.isEmpty()) {
                 Column(
@@ -514,7 +543,8 @@ class ChatBotTabScreen : Screen {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .widthIn(max = 1000.dp)
+                        .align(Alignment.CenterHorizontally)
                         .weight(1f)
                 ) {
                     items(chatUiModel.messages.size) { item ->
@@ -657,6 +687,7 @@ class ChatBotTabScreen : Screen {
             Box(
                 modifier = Modifier
                     .align(if (message.isFromMe) Alignment.End else Alignment.Start)
+                    .widthIn(max = CHAT_BUBBLE_MAX_WIDTH_DP.dp)
                     .clip(
                         RoundedCornerShape(
                             topStart = 48f,
@@ -681,12 +712,12 @@ class ChatBotTabScreen : Screen {
                             contentDescription = message.imageFileName ?: "Generated image",
                             contentScale = ContentScale.Fit,
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .widthIn(max = CHAT_BUBBLE_MAX_WIDTH_DP.dp)
                                 .height(260.dp)
                                 .clip(RoundedCornerShape(12.dp))
                         )
                     } else {
-                        Text("🖼️ Failed to decode image.")
+                        Text(localization.failedToDecodeImageError)
                     }
                 } else {
                     Text(text = message.text)
@@ -807,8 +838,9 @@ class ChatBotTabScreen : Screen {
         ) {
             Row(
                 modifier = Modifier
-                    .padding(horizontal =  12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
                 Icon(
                     imageVector = LlamatikIcons.TemporaryChat,

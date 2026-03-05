@@ -74,6 +74,7 @@ Be clear, honest, and concise. Answer in the user's language.
 
 private const val PDF_RAG_STORE_PATH = "rag/pdf_rag_store.json"
 enum class GenerationMode { TEXT, IMAGE }
+const val COSINE_THRESHOLD = 0.15
 
 class ChatBotViewModel(
     private var navigator: Navigator,
@@ -85,6 +86,7 @@ class ChatBotViewModel(
     private val chatHistoryRepository: ChatHistoryRepository,
     private val ttsEngine: TtsEngine,
 ) : ScreenModel {
+    val localization = getCurrentLocalization()
 
     data class DownloadState(
         val inProgress: Boolean = false,
@@ -602,7 +604,7 @@ class ChatBotViewModel(
                     _conversation.value += ChatUiModel.Message("", ChatUiModel.Author.bot)
 
                     if (!_state.value.isStableDiffusionModelLoaded) {
-                        updateLastBotMessage("🖼️ Image mode is enabled, but no Stable Diffusion model is loaded. Open Models and select a SD model.")
+                        updateLastBotMessage(localization.imageModeEnabledButNoModelLoadedError)
                         _state.value = _state.value.copy(isGenerating = false)
                         _sideEffects.trySend(ChatBotSideEffects.OnMessageLoaded)
                         return@withContext
@@ -618,7 +620,7 @@ class ChatBotViewModel(
                     )
 
                     if (rgbaBytes.isEmpty()) {
-                        updateLastBotMessage("🖼️ Image generation failed (empty output).")
+                        updateLastBotMessage(localization.imageGenerationFailedError)
                     } else {
                         val fileName = "sd_${Random.nextInt()}_${System.now().toString().replace(":", "_")}.png"
                         updateLastBotImageRgba(
@@ -631,7 +633,7 @@ class ChatBotViewModel(
 
                     persistCurrentConversationIfNeeded()
                 } catch (t: Throwable) {
-                    Logger.e(t.message ?: "Image generation error")
+                    Logger.e(t.message ?: localization.imageGenerationError)
                     updateLastBotMessage("🖼️ Error: ${t.message ?: "unknown"}")
                 } finally {
                     _state.value = _state.value.copy(isGenerating = false)
@@ -812,6 +814,73 @@ class ChatBotViewModel(
         }
     }
 
+    /**
+     * Remove all downloaded model files, clear saved model paths, and delete persisted PDF RAG store.
+     * Updates view state accordingly.
+     */
+    fun onClearAllCachedModels() {
+        screenModelScope.launch(AppDispatchersIO) {
+            try {
+                val allModels = (_state.value.generateModels +
+                        _state.value.embedModels +
+                        _state.value.sttModels +
+                        _state.value.stableDiffusionModels)
+                    .distinctBy { it.url }
+
+                for (model in allModels) {
+                    try {
+                        val path = resolveAndMigratePath(model)
+                        if (!path.isNullOrBlank()) {
+                            runCatching { LlamatikTempFile(model.name).delete(path) }
+                        }
+                    } catch (t: Throwable) {
+                        Logger.e(t) { "Failed deleting model file for ${model.name}" }
+                    }
+                    runCatching { getModelsUseCase.deleteModelPath(model) }
+                }
+
+                // Delete persisted RAG store
+                runCatching { AppStorage.delete(PDF_RAG_STORE_PATH) }
+
+                vectorStore = null
+
+                _state.update { s ->
+                    s.copy(
+                        generateModels = s.generateModels.map { it.copy(localPath = null, fileName = null) },
+                        embedModels = s.embedModels.map { it.copy(localPath = null, fileName = null) },
+                        sttModels = s.sttModels.map { it.copy(localPath = null, fileName = null) },
+                        stableDiffusionModels = s.stableDiffusionModels.map { it.copy(localPath = null, fileName = null) },
+                        selectedEmbedModelName = null,
+                        selectedGenerateModelName = null,
+                        selectedSttModelName = null,
+                        selectedStableDiffusionModelName = null,
+                        isEmbedModelLoaded = false,
+                        isGenerateModelLoaded = false,
+                        isSttModelLoaded = false,
+                        isStableDiffusionModelLoaded = false,
+                        ragPdfFileName = null,
+                        isRagIndexing = false,
+                        ragIndexingProgress = 0,
+                        ragChunksCount = 0
+                    )
+                }
+
+                _sideEffects.trySend(
+                    ChatBotSideEffects.OnCacheCleared(localization.allCachedModelsRemoved)
+                )
+
+            } catch (t: Throwable) {
+                Logger.e(t) { "Failed to clear cached models / RAG" }
+
+                _sideEffects.trySend(
+                    ChatBotSideEffects.OnCacheClearFailed(
+                        t.message ?: "Unknown error while clearing cache."
+                    )
+                )
+            }
+        }
+    }
+
     fun onStopSpeaking() {
         runCatching { ttsEngine.stop() }
     }
@@ -878,7 +947,7 @@ class ChatBotViewModel(
 
                 val fileName = file.name
                 if (!fileName.lowercase().endsWith(".pdf")) {
-                    emitBot("Please select a PDF file.")
+                    emitBot(localization.pdfSelectFile)
                     return@launch
                 }
 
@@ -895,13 +964,13 @@ class ChatBotViewModel(
                 val text = extractPdfText(pdfBytes).trim()
                 if (text.isBlank()) {
                     _state.update { it.copy(isRagIndexing = false, ragIndexingProgress = 0) }
-                    emitBot("I couldn’t extract text from this PDF. If it’s a scanned PDF, it needs OCR.")
+                    emitBot(localization.pdfExtractionError)
                     return@launch
                 }
 
                 if (!_state.value.isEmbedModelLoaded) {
                     _state.update { it.copy(isRagIndexing = false, ragIndexingProgress = 0) }
-                    emitBot("To use PDF RAG, please download/load the embedding model: \"nomic-embed-text\" (Embed Models).")
+                    emitBot(localization.pdfEmbedModelNeededWarning)
                     return@launch
                 }
 
@@ -911,7 +980,7 @@ class ChatBotViewModel(
                 val capped = chunks.take(2_000)
                 if (capped.isEmpty()) {
                     _state.update { it.copy(isRagIndexing = false, ragIndexingProgress = 0) }
-                    emitBot("No usable text chunks were generated from this PDF.")
+                    emitBot(localization.pdfNoUsableChunksError)
                     return@launch
                 }
 
@@ -924,7 +993,7 @@ class ChatBotViewModel(
                     if (vec.isEmpty()) {
                         Logger.e { "RAG - embedding failed for chunk $index (empty vector); aborting PDF indexing" }
                         _state.update { it.copy(isRagIndexing = false, ragIndexingProgress = 0) }
-                        emitBot("Failed to compute embeddings for this PDF. Please re-load the embedding model and try again.")
+                        emitBot(localization.pdfFailedToComputeEmbeddingsError)
                         return@launch
                     }
 
@@ -962,12 +1031,12 @@ class ChatBotViewModel(
                     )
                 }
 
-                emitBot("✅ PDF indexed for RAG: $fileName (${items.size} chunks)")
+                emitBot("${localization.pdfIndexedForRAG}: $fileName (${items.size} chunks)")
 
             } catch (t: Throwable) {
                 t.printStackTrace()
                 _state.update { it.copy(isRagIndexing = false, ragIndexingProgress = 0) }
-                emitBot("Failed to load PDF for RAG: ${t.message ?: "unknown error"}")
+                emitBot("${localization.pdfFailedToLoadPDFForRAG}: ${t.message ?: "unknown error"}")
             }
         }
     }
@@ -985,12 +1054,12 @@ class ChatBotViewModel(
                 try {
                     val qArr = LlamaBridge.embed(question)
                     if (qArr.isEmpty()) {
-                        emitBot("Failed to compute embeddings for your question. Please re-load the embedding model and try again.")
+                        emitBot(localization.failedToComputeEmbeddings)
                         return@withContext
                     }
 
                     val store = vectorStore
-                        ?: return@withContext emitBot("There is a problem with the AI")
+                        ?: return@withContext emitBot(localization.thereIsAProblemWithAI)
 
                     val qVec = qArr.toList()
 
@@ -1003,7 +1072,7 @@ class ChatBotViewModel(
                     )
 
                     if (topItems.isEmpty()) {
-                        emitBot("I don't have enough information in my sources.")
+                        emitBot(localization.iDontHaveEnoughInfoInSources)
                         _sideEffects.trySend(ChatBotSideEffects.OnNoResults)
                         _sideEffects.trySend(ChatBotSideEffects.ScrollToBottom)
                         return@withContext
@@ -1013,10 +1082,8 @@ class ChatBotViewModel(
 
                     Logger.d("RAG - best cosine=$bestCosine topItems=${topItems.size}")
 
-                    val COSINE_THRESHOLD = 0.15
-
                     if (bestCosine < COSINE_THRESHOLD) {
-                        emitBot("I don't have enough information in my sources.")
+                        emitBot(localization.iDontHaveEnoughInfoInSources)
                         _sideEffects.trySend(ChatBotSideEffects.OnNoResults)
                         _sideEffects.trySend(ChatBotSideEffects.ScrollToBottom)
                         return@withContext
@@ -1073,7 +1140,7 @@ class ChatBotViewModel(
                             if (activeRequestId != requestId) return@stream
                             _conversation.value = _conversation.value.dropLast(1) +
                                     ChatUiModel.Message(
-                                        "There is a problem with the AI: $err",
+                                        "${localization.thereIsAProblemWithAI}: $err",
                                         ChatUiModel.Author.bot
                                     )
                             _sideEffects.trySend(ChatBotSideEffects.OnLoadError)
@@ -1082,7 +1149,7 @@ class ChatBotViewModel(
                     )
                 } catch (t: Throwable) {
                     t.printStackTrace()
-                    emitBot("There is a problem with the AI")
+                    emitBot(localization.thereIsAProblemWithAI)
                     _sideEffects.trySend(ChatBotSideEffects.OnLoadError)
                     _sideEffects.trySend(ChatBotSideEffects.ScrollToBottom)
                 }
@@ -1184,7 +1251,7 @@ class ChatBotViewModel(
                                 if (activeRequestId != requestId) return@stream
                                 _conversation.value = _conversation.value.dropLast(1) +
                                         ChatUiModel.Message(
-                                            "There is a problem with the AI: $err",
+                                            "${localization.thereIsAProblemWithAI}: $err",
                                             ChatUiModel.Author.bot
                                         )
                                 activeRequestId = null
@@ -1199,7 +1266,7 @@ class ChatBotViewModel(
                         }
                     }
                 } catch (t: Throwable) {
-                    emitBot("There is a problem with the AI: ${t.message ?: "Unknown error"}")
+                    emitBot("${localization.thereIsAProblemWithAI}: ${t.message ?: "Unknown error"}")
                     activeRequestId = null
                     _state.value = _state.value.copy(isGenerating = false)
                     _sideEffects.trySend(ChatBotSideEffects.OnLoadError)
@@ -1581,4 +1648,6 @@ sealed class ChatBotSideEffects {
     data object OnSettingsChanged : ChatBotSideEffects()
     data object OnStableDiffusionModelLoaded : ChatBotSideEffects()
     data object OnStableDiffusionModelLoadError : ChatBotSideEffects()
+    data class OnCacheCleared(val message: String) : ChatBotSideEffects()
+    data class OnCacheClearFailed(val message: String) : ChatBotSideEffects()
 }
